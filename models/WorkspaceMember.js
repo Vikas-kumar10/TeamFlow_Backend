@@ -50,7 +50,7 @@ const workspaceMemberSchema = new mongoose.Schema(
 // A user can have only one membership per workspace.
 workspaceMemberSchema.index(
   { workspace: 1, user: 1 },
-  { unique: true }
+   { unique: true }
 );
 
 // Helpful for finding members by workspace and role.

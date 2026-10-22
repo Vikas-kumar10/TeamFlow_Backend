@@ -13,11 +13,24 @@ const requireWorkspace = async (req, res, next) => {
       });
     }
 
+    // authenticate middleware should run before this middleware.
+    if (!req.user?._id) {
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required",
+      });
+    }
+
+    // console.log("Workspace ID:", workspaceId);
+    // console.log("Logged-in User ID:", req.user._id);
+
     const membership = await WorkspaceMember.findOne({
       workspace: workspaceId,
       user: req.user._id,
       status: "active",
     });
+
+    // console.log("Membership found:", membership);
 
     if (!membership) {
       return res.status(403).json({

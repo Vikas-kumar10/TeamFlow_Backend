@@ -22,6 +22,7 @@ export const addWorkspaceMember = asyncHandler(async (req, res) => {
   const { workspaceId } = req.params;
   const { email, role } = req.body;
 
+  // 1. Validate workspace ID
   if (!mongoose.isValidObjectId(workspaceId)) {
     return res.status(400).json({
       success: false,
@@ -29,6 +30,7 @@ export const addWorkspaceMember = asyncHandler(async (req, res) => {
     });
   }
 
+  // 2. Check workspace admin permission
   const admin = await requireWorkspaceAdmin(
     workspaceId,
     req.user._id
@@ -41,6 +43,7 @@ export const addWorkspaceMember = asyncHandler(async (req, res) => {
     });
   }
 
+  // 3. Validate email
   if (typeof email !== "string" || !email.trim()) {
     return res.status(400).json({
       success: false,
@@ -48,15 +51,19 @@ export const addWorkspaceMember = asyncHandler(async (req, res) => {
     });
   }
 
+  const normalizedEmail = email.trim().toLowerCase();
+
+  // 4. Validate role
   const allowedRoles = ["manager", "member"];
 
   if (role !== undefined && !allowedRoles.includes(role)) {
     return res.status(400).json({
       success: false,
-      message: "New members can be assigned manager or member role",
+      message: "Role must be manager or member",
     });
   }
 
+  // 5. Check workspace exists
   const workspace = await Workspace.findById(workspaceId);
 
   if (!workspace) {
@@ -66,18 +73,21 @@ export const addWorkspaceMember = asyncHandler(async (req, res) => {
     });
   }
 
+  // 6. Find registered user by email
+  // No isActive condition because your User schema's
+  // isActive field/default has not been confirmed.
   const user = await User.findOne({
-    email: email.trim().toLowerCase(),
-    isActive: true,
+    email: normalizedEmail,
   });
 
   if (!user) {
     return res.status(404).json({
       success: false,
-      message: "Active registered user not found for this email",
+      message: "Registered user not found for this email",
     });
   }
 
+  // 7. Check existing membership
   const existingMembership = await WorkspaceMember.findOne({
     workspace: workspaceId,
     user: user._id,
@@ -90,8 +100,9 @@ export const addWorkspaceMember = asyncHandler(async (req, res) => {
     });
   }
 
+  // 8. Create workspace membership
   const membership = await WorkspaceMember.create({
-    workspace: workspaceId,
+    workspace: workspace._id,
     user: user._id,
     role: role || "member",
     status: "active",
@@ -99,8 +110,10 @@ export const addWorkspaceMember = asyncHandler(async (req, res) => {
     joinedAt: new Date(),
   });
 
+  // 9. Populate user details
   await membership.populate("user", "name email");
 
+  // 10. Send response
   return res.status(201).json({
     success: true,
     message: "Workspace member added successfully",
