@@ -4,6 +4,7 @@ import WorkspaceMember from "../models/WorkspaceMember.js";
 import asyncHandler from "../utils/asyncHandler.js";
 
 // POST /api/workspaces
+
 export const createWorkspace = asyncHandler(async (req, res) => {
   const { name, description } = req.body;
 
@@ -21,7 +22,10 @@ export const createWorkspace = asyncHandler(async (req, res) => {
     });
   }
 
-  if (description !== undefined && typeof description !== "string") {
+  if (
+    description !== undefined &&
+    typeof description !== "string"
+  ) {
     return res.status(400).json({
       success: false,
       message: "Description must be a string",
@@ -34,13 +38,18 @@ export const createWorkspace = asyncHandler(async (req, res) => {
     creator: req.user._id,
   });
 
-  await WorkspaceMember.create({
-    workspace: workspace._id,
-    user: req.user._id,
-    role: "admin",
-    status: "active",
-    invitedBy: req.user._id,
-  });
+  try {
+    await WorkspaceMember.create({
+      workspace: workspace._id,
+      user: req.user._id,
+      role: "admin",
+      status: "active",
+      invitedBy: req.user._id,
+    });
+  } catch (error) {
+    await Workspace.findByIdAndDelete(workspace._id);
+    throw error;
+  }
 
   return res.status(201).json({
     success: true,
@@ -48,6 +57,7 @@ export const createWorkspace = asyncHandler(async (req, res) => {
     workspace,
   });
 });
+
 
 // GET /api/workspaces
 export const getMyWorkspaces = asyncHandler(async (req, res) => {
